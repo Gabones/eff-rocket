@@ -4,11 +4,14 @@ use rocket::serde::{Deserialize, Serialize};
 pub struct Bathroom {
     pub bathroom: String,
     pub occupied: bool,
-    pub time: String
+    pub time: String,
 }
 
 impl Bathroom {
     pub fn to_string(&self) -> String {
-        format!("{{ \"bathroom\": \"{}\", \"occupied\": {}, \"time\": \"{}\" }},", &self.bathroom, &self.occupied, &self.time)
+        format!(
+            "{{ \"bathroom\": \"{}\", \"occupied\": {}, \"time\": \"{}\" }},",
+            &self.bathroom, &self.occupied, &self.time
+        )
     }
 }

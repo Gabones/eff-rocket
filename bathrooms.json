@@ -1,4 +1,1 @@
-[
-	{ "bathroom": "M", "occupied": true, "time": "11/11/2023 16:00" },
-	{ "bathroom": "F", "occupied": true, "time": "11/11/2023 16:00" }
-]
+[{"bathroom":"M","occupied":true,"time":"12/11/2023 00:13"},{"bathroom":"M","occupied":true,"time":"12/11/2023 00:22"}]

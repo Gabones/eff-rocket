@@ -1,11 +1,10 @@
-use rocket::serde::json::{json, serde_json, Json, Value};
+use rocket::serde::json::{serde_json, Json, Value};
 use sqlite::State;
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::vec;
+use rocket::http::Status;
 
-mod bathroom;
-use bathroom::Bathrooms;
+mod bathrooms;
+use bathrooms::Bathrooms;
 
 #[macro_use]
 extern crate rocket;
@@ -13,7 +12,7 @@ extern crate rocket;
 fn read_json() -> Vec<Bathrooms> {
     let connection = sqlite::open("database.db").unwrap();
 
-    let mut statement = connection.prepare(bathroom::QUERY_SELECT).unwrap();
+    let mut statement = connection.prepare(bathrooms::QUERY_SELECT).unwrap();
 
     let mut result: Vec<Bathrooms> = vec![];
     while let Ok(State::Row) = statement.next() {
@@ -33,24 +32,20 @@ fn read_json() -> Vec<Bathrooms> {
 }
 
 #[post("/", data = "<bathroom>")]
-fn insert(bathroom: Json<Bathrooms>) -> Value {
-    let mut vec_bath = read_json();
+fn insert(bathroom: Json<Bathrooms>) -> Status {
 
-    vec_bath.push(bathroom.0);
-    let json = serde_json::to_string(&vec_bath).unwrap();
+    let sensor_data = bathroom.0;
 
-    let file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open("bathrooms.json");
+    let connection = sqlite::open("database.db").unwrap();
 
-    if let Err(e) = write!(file.unwrap(), "{}", json) {
-        eprintln!("Couldn't write to file: {}", e);
-        return json!({ "File": "Unable to write the file" });
-    }
+    connection.execute(format!(
+        "INSERT INTO bathrooms (bathroom, occupied, time) VALUES(\"{}\", {}, \"{}\")",
+        sensor_data.bathroom,
+        if sensor_data.occupied { 1 } else { 0 },
+        sensor_data.time
+    )).unwrap();
 
-    let v: Value = serde_json::from_str(&json).unwrap();
-    return v;
+    Status::Ok
 }
 
 #[get("/")]
@@ -61,7 +56,18 @@ fn index() -> Value {
     return v;
 }
 
+#[delete("/<id>")]
+fn delete(id: i64) -> Status {
+	let connection = sqlite::open("database.db").unwrap();
+	connection.execute(format!(
+		"DELETE FROM bathrooms WHERE id = {}",
+		id
+	)).unwrap();
+
+	Status::Ok
+}
+
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index, insert])
+    rocket::build().mount("/", routes![index, insert, delete])
 }

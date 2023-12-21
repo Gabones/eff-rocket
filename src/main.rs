@@ -1,31 +1,39 @@
 use rocket::serde::json::{json, serde_json, Json, Value};
+use sqlite::State;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::vec;
 
 mod bathroom;
-use bathroom::Bathroom;
+use bathroom::Bathrooms;
 
 #[macro_use]
 extern crate rocket;
 
-fn read_json() -> Vec<Bathroom> {
-    let file = OpenOptions::new().read(true).open("bathrooms.json");
+fn read_json() -> Vec<Bathrooms> {
+    let connection = sqlite::open("database.db").unwrap();
 
-    if file.is_ok() {
-        let serialized: Result<Vec<Bathroom>, serde_json::Error> =
-            serde_json::from_reader(file.unwrap());
-        if serialized.is_ok() {
-            return serialized.unwrap();
-        }
+    let mut statement = connection.prepare(bathroom::QUERY_SELECT).unwrap();
+
+    let mut result: Vec<Bathrooms> = vec![];
+    while let Ok(State::Row) = statement.next() {
+        result.push(Bathrooms {
+            id: statement.read::<i64, _>("id").unwrap(),
+            bathroom: statement.read::<String, _>("bathroom").unwrap(),
+            occupied: if statement.read::<i64, _>("occupied").unwrap() != 0 {
+                true
+            } else {
+                false
+            },
+            time: statement.read::<String, _>("time").unwrap(),
+        });
     }
 
-    let result: Vec<Bathroom> = vec![];
     return result;
 }
 
 #[post("/", data = "<bathroom>")]
-fn insert(bathroom: Json<Bathroom>) -> Value {
+fn insert(bathroom: Json<Bathrooms>) -> Value {
     let mut vec_bath = read_json();
 
     vec_bath.push(bathroom.0);
